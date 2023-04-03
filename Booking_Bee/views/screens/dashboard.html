@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DASHBOARD</title>
+    <link rel="stylesheet" type="text/css" href="/assets/styling.css">
+
+</head>
+
+<body>
+<div class="container">
+
+    <div class="navBar">
+        <div class="navContainer">
+            <h1 id="userInfo" style="text-align: center"></h1>
+            <nav>
+                <a id="history">View History</a>
+                <a onclick="logout()">Log Out</a>
+            </nav>
+        </div>
+
+    </div>
+</div>
+<h1 style="text-align: center; margin-top: 20px;">UPCOMING MOVIES</h1>
+<div class="card-container container">
+    {{range .Movies}}
+        <div class="card">
+            <img src="{{.ImageUrl}}" alt="{{.MovieName}}">
+            <h2 class="cardMovieName">{{.MovieName}}</h2>
+            <p>{{.MovieDesc}}</p>
+            <p><strong>Price:</strong> Ksh{{.MoviePrice}}</p>
+            <p><strong>Premier Date:</strong> {{.PremierDate}}</p>
+            <p class="cardCinemaName"><strong>Cinema:</strong></p>
+            <p class="cardCinemaLocation"><strong>Location:</strong></p>
+
+            <a href="#cinemaName" class="btnBook" onclick="bookNow('{{.CinemaHallID}}','{{.MovieName}}')">BOOK NOW</a>
+        </div>
+    {{end}}
+
+</div>
+<div id="cinemaName">
+    <h1 style="text-align: center; margin-top: 20px;" id="selectSeat">NAIROBI CINEMA</h1>
+    <p id="location" style="text-align: center; font-size: larger"></p>
+</div>
+<div id="movieCont">
+    <h2 style="text-align: center; margin-top: 10px;">Select Your Seat: </h2>
+    <h1 id="movieHeading" style="text-align: center"></h1>
+</div>
+
+<div class="container seats">
+    <div id="seatHolder"></div>
+    <div class="screenBox"></div>
+</div>
+
+<a id="count-selected" class="btnBook">PROCEED TO PAYMENT</a>
+
+
+<script>
+    const userInfo = document.getElementById("userInfo");
+    const buttonDiv = document.getElementById("seatHolder");
+    const countSelected = document.getElementById("count-selected");
+    const history = document.getElementById("history");
+    const container = document.createElement("div");
+    container.className = "seatContainer";
+    const ticketDetails = JSON.parse('{{.TicketJSON}}');
+    const movieDetails = JSON.parse('{{.MoviesJSON}}');
+    const cinemaDetails = JSON.parse('{{.CinemaJSON}}');
+
+    //### SET USERNAME ###
+    const urlParams = new URLSearchParams(window.location.search);
+    const dbName = urlParams.get('dbName');
+    userInfo.innerHTML = 'Welcome back, ' + dbName;
+
+    for (let i = 1; i <= 200; i++) {
+        const button = document.createElement("button");
+        button.innerHTML = ' <svg id="svg-1" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 432 384">   <path fill="currentColor"                 d="M43 320v-64h341v128h-64v-64H107v64H43v-64zm320-171h64v64h-64v-64zM0 149h64v64H0v-64zm320 64H107V43q0-18 12.5-30.5T149 0h128q18 0 30.5 12.5T320 43v170z" />        </svg>';
+        button.className = "btnSeat";
+        const seatNumber = i;
+        button.setAttribute('seatNumber', seatNumber);
+
+        const colIndex = Math.floor((i - 1) / 50);
+        const col = container.querySelectorAll(".col")[colIndex];
+        if (!col) {
+            const newCol = document.createElement("div");
+            newCol.className = "col";
+            container.appendChild(newCol);
+        }
+        const currentCol = container.querySelectorAll(".col")[colIndex];
+        currentCol.appendChild(button);
+
+        let isDim = false;
+        button.addEventListener('click', function () {
+            button.classList.toggle('selected')
+            if (isDim) {
+                button.style.backgroundColor = 'white';
+                isDim = false;
+            } else {
+                button.style.backgroundColor = 'dimgray';
+                isDim = true;
+                // console.log(seatNumber);
+            }
+        });
+    }
+
+    buttonDiv.appendChild(container);
+
+    // #### GET DETAILS AND PASS TO THE PAYMENT PAGE#####
+    const dbID = urlParams.get('dbID');
+    countSelected.addEventListener('click', () => {
+        const selectedButtons = document.querySelectorAll('.selected');
+        const selectedSeatNumbers = [];
+        selectedButtons.forEach(button => {
+            const seatNumber = button.getAttribute('seatNumber');
+            selectedSeatNumbers.push(seatNumber);
+        });
+        console.log(`Number of selected buttons: ${selectedButtons.length}`);
+        console.log(`Selected seat numbers: ${selectedSeatNumbers.join(', ')}`);
+
+        const payMovieName = document.getElementById('movieHeading').innerHTML;
+        const payCinemaName = document.getElementById('selectSeat').innerHTML;
+
+
+        let payPrice;
+        let payMovieID;
+        let payCinemaID;
+        movieDetails.map(function (params) {
+            if (payMovieName == params.MovieName) {
+                payPrice = params.MoviePrice;
+                payMovieID = params.MovieID;
+            }
+        });
+
+        cinemaDetails.map(function (param) {
+            if (payCinemaName == param.CinemaName) {
+                payCinemaID = param.CinemaID;
+            }
+        });
+
+        window.location.href = `/payment?userId=${encodeURIComponent(dbID)}&movieId=${encodeURIComponent(payMovieID)}&cinemaId=${encodeURIComponent(payCinemaID)}&movie=${encodeURIComponent(payMovieName)}&price=${encodeURIComponent(payPrice)}&seats=${selectedSeatNumbers.join(',')}`;
+    });
+
+
+    history.addEventListener('click', () => {
+        window.location.href = `/history?userId=${encodeURIComponent(dbID)}&movieDetails=${encodeURIComponent(JSON.stringify(movieDetails))}&cinemaDetails=${encodeURIComponent(JSON.stringify(cinemaDetails))}&ticketDetails=${encodeURIComponent(JSON.stringify(ticketDetails))}`;
+    });
+
+</script>
+
+<script>
+    // ### BOOK NOW BUTTON FUNCTION ####
+    function bookNow(cinemaId, movieName) {
+        const Heading = document.getElementById('selectSeat');
+        const MovieName = document.getElementById('movieHeading');
+        const Location = document.getElementById('location');
+
+
+        const cinemaDetail = JSON.parse('{{.CinemaJSON}}');
+        // console.log(cinemaDetails);
+        // console.log(cinemaId);
+        // console.log(movieName);
+
+        cinemaDetail.map(function (params) {
+            if (cinemaId == params.CinemaID) {
+                MovieName.innerHTML = movieName;
+                Location.innerHTML = '(' + params.CinemaLocation + ')';
+                Heading.innerHTML = params.CinemaName;
+
+            }
+        });
+
+        // reset button status
+        const buttons1 = document.querySelectorAll('.btnSeat');
+        for (let i = 0; i < buttons1.length; i++) {
+            const button = buttons1[i];
+            button.disabled = false;
+            button.style.backgroundColor = 'white';
+        }
+
+        //### CHECK FOR SEAT AVAILABILITY ###
+        // const MovieName = document.getElementById('movieHeading').innerHTML;
+        const buttons = document.querySelectorAll('.btnSeat');
+        for (let i = 0; i < buttons.length; i++) {
+            const button = buttons[i];
+            const seatNumber = button.getAttribute('seatNumber');
+            movieDetails.map(function (params) {
+                if (movieName == params.MovieName) {
+                    ticketDetails.map(function (param) {
+                        if (params.MovieID == param.MovieID) {
+                            if ((param.SeatNo == seatNumber) && (param.Availability == 0)) {
+                                button.disabled = true;
+                                button.style.backgroundColor = '#102E44';
+                            }
+                        }
+                    })
+                }
+            });
+
+        }
+
+    }
+</script>
+
+
+<script>
+    // #### RETRIEVE JSON INFO FROM THE DASH HANDLER AND DISPLAY IN THE CARD ###
+    const cinemaDets = JSON.parse('{{.CinemaJSON}}');
+    const movieDets = JSON.parse('{{.MoviesJSON}}');
+
+    for (let i = 0; i < movieDetails.length; i++) {
+        const MovieName = document.getElementsByClassName('cardMovieName')[i].innerHTML;
+        const CinemaName = document.getElementsByClassName('cardCinemaName')[i];
+        const Location = document.getElementsByClassName('cardCinemaLocation')[i];
+        // console.log(MovieName);
+
+        movieDets.map(function (params) {
+            if (MovieName == params.MovieName) {
+                cinemaDets.map(function (param) {
+                    if (params.CinemaHallID == param.CinemaID) {
+                        CinemaName.innerHTML = 'Cinema: ' + param.CinemaName;
+                        Location.innerHTML = 'Location: ' + param.CinemaLocation;
+                    }
+                });
+            }
+        });
+    }
+</script>
+
+<script>
+    function logout() {
+        fetch('/logout', {
+            method: 'POST'
+        })
+            .then(response => {
+                if (response.ok) {
+                    // Clear local storage and redirect to login page
+                    localStorage.clear();
+                    window.location.href = "/login";
+                } else {
+                    console.error('Failed to logout');
+                }
+            })
+            .catch(error => {
+                console.error('Failed to logout:', error);
+            });
+    }
+
+</script>
+
+
+</body>
+
+</html>

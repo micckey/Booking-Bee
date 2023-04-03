@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>HISTORY</title>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/assets/styling.css">
+</head>
+<body>
+<div class="wrapper container">
+    <h1 style="text-align: center; margin-top: 10px">VIEW YOUR HISTORY</h1>
+    <ul role="list" id="myList">
+            {{range .}}
+                <li>
+                    <div class="listCard">
+                        <p style="display: none">{{.CustomerID}}</p>
+                        <h2 class="movieID" style="text-align: center">{{.MovieID}}</h2>
+                        <h3 class="cinemaID" style="text-align: center">{{.CinemaID}}</h3>
+                        <h4 class="ticketID" style="text-align: center">{{.TicketID}}</h4>
+                        <h5 id="timestamp" style="text-align: center">{{.TimeStamp}}</h5>
+                        <button id="{{.HistoryID}}" class="btnDelete" style="text-align: center">CANCEL</button>
+                    </div>
+                </li>
+            {{end}}
+    </ul>
+</div>
+
+
+<script>
+    const timeStamp = document.getElementById("timestamp");
+    const myList = document.getElementById("myList");
+    const count = myList.getElementsByTagName("li").length;
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    let listItems = document.querySelectorAll("li");
+    const deleteButtons = document.querySelectorAll('.btnDelete');
+
+
+    const userId = urlParams.get('userId');
+    const encodedMovieDetails = urlParams.get('movieDetails');
+    const movieDetails = JSON.parse(decodeURIComponent(encodedMovieDetails));
+    const encodedCinemaDetails = urlParams.get('cinemaDetails');
+    const cinemaDetails = JSON.parse(decodeURIComponent(encodedCinemaDetails));
+    const encodedTicketDetails = urlParams.get('ticketDetails');
+    const ticketDetails = JSON.parse(decodeURIComponent(encodedTicketDetails));
+
+    //### DISPLAY ONLY INFO OF CURRENT USER ###
+    listItems.forEach(function (item) {
+        let itemCustomerID = item.querySelector("p").textContent;
+        if (itemCustomerID === userId) {
+            item.style.display = "flex";
+        } else {
+            item.style.display = "none";
+        }
+    });
+
+    //### CHANGE CONTENT IN THE LISTS ###
+    for (let i=0; i<count; i++){
+        let movieID = document.getElementsByClassName("movieID")[i];
+        let ticketID = document.getElementsByClassName("ticketID")[i];
+        let cinemaID = document.getElementsByClassName("cinemaID")[i];
+
+        //### SET MOVIE NAME ###
+        movieDetails.map(function (params) {
+            if(movieID.innerHTML == params.MovieID){
+                movieID.innerHTML = params.MovieName;
+            }
+        });
+
+        //### SET CINEMA NAME ###
+        cinemaDetails.map(function (params) {
+            if(cinemaID.innerHTML == params.CinemaID){
+                cinemaID.innerHTML = params.CinemaName;
+            }
+        });
+
+        //### SET SEAT NUMBER ###
+        ticketDetails.map(function (params) {
+            if(ticketID.innerHTML == params.TicketID){
+                ticketID.innerHTML = params.SeatNo;
+            }
+        });
+    }
+
+    //#### CANCEL PAYMENT ###
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const historyId = this.id;
+            fetch(`/deleteHistory?historyId=${historyId}`)
+                .then(response => {
+                    // if (!response.ok) {
+                    //     throw new Error(`HTTP error! status: ${response.status}`);
+                    // }
+                    // return response.json();
+
+                    if (response.ok) {
+                        swal({
+                            title: 'Ticket cancelled successfully!',
+                            text: 'You will receive your refund in 24hrs',
+                            icon: 'success',
+                            button: {
+                                className: 'btnCust btn2'},
+                            closeOnClickOutside: false,
+                            className: 'alertBox',
+                        })
+                            .then(data => {
+                                // Reload the page after successful deletion
+                                window.location.reload();
+                            });
+                    } else {
+                        //console.error(`Payment error: ${response.status}`);
+                        swal({
+                            title: 'Error!',
+                            text: 'An unexpected error occurred. Please try again later.',
+                            icon: 'error',
+                            button: {
+                                className: 'btnCust btn2'},
+                            closeOnClickOutside: false,
+                            className: 'alertBox'
+                        });
+                    }
+
+                })
+
+                .catch(error => {
+                    console.error(error);
+                });
+        });
+    });
+
+</script>
+
+</body>
+</html>

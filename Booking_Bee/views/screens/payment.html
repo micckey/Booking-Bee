@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PAYMENT</title>
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="/assets/styling.css">
+</head>
+<body>
+    <div class="container payContainer ">
+        <div class="payCard">
+            <h1>Booking Summary</h1>
+            <h2 style="margin-top: 60px" id="payMovieName">MOVIE NAME</h2>
+            <h2 style="margin-top: 15px">SEATS SELECTED</h2>
+            <h3 id="seat-numbers">NIL</h3>
+            <h2 style="margin-top: 15px">PRICE PER SEAT</h2>
+            <h3 id="payPrice">NIL</h3>
+            <h2 style="margin-top: 15px">TOTAL:</h2>
+            <h3 id="totalPrice">NIL</h3>
+        </div>
+        <div class="payCard">
+           <h1>Make your payment</h1>
+            <h2 style="margin-top: 60px">LIPA NA MPESA</h2>
+            <h3 style="margin-top: 15px">Till NO</h3><h2>232343</h2>
+            <h3 style="margin-top: 15px">Update Mpesa Number</h3>
+            <input type="text" name="registerFname" required/>
+            <button class="btnCust btn2" type="submit">Submit</button><br>
+            <button id="payButton" class="btnCust btn2" type="submit">DONE</button>
+        </div>
+    </div>
+
+
+    <script>
+        // Retrieve the seat numbers from the URL query string
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+        // const selectedSeatNumbers = urlParams.get('seats').split(',');
+        const selectedSeatNumbers = urlParams.has('seats') ? urlParams.get('seats').split(',') : [];
+
+        const movieName = urlParams.get('movie');
+        const price = urlParams.get('price');
+        const cinemaId = urlParams.get('cinemaId');
+        const movieId = urlParams.get('movieId');
+        const userId = urlParams.get('userId');
+
+        //### Display the seat numbers ###
+        const seatNumbersHeading = document.getElementById('seat-numbers');
+        seatNumbersHeading.textContent = `Seats: ${selectedSeatNumbers.join(', ')}`;
+
+        // ### Display Movie Name ###
+        const payMovieName = document.getElementById('payMovieName');
+        payMovieName.textContent = movieName;
+
+        // ### Display Price per Movie ###
+        const payPrice = document.getElementById('payPrice');
+        payPrice.textContent = `Ksh: ${price}`;
+
+        // ### Get total amount ###
+        const seatsNo = selectedSeatNumbers.length;
+        const total = seatsNo * price;
+        const totals = document.getElementById('totalPrice');
+        totals.textContent = `Ksh: ${total}`;
+
+        const selectedSeats = selectedSeatNumbers.map(seatNumber => ({
+            userId,
+            cinemaId,
+            movieId,
+            seatNumber
+        }));
+
+
+        //  ### SEND SELECTED SEATS TO PAY HANDLER ###
+        const payButton = document.getElementById('payButton');
+        payButton.addEventListener('click', async () => {
+            window.history.replaceState({}, document.title, window.location.pathname);
+
+            const response = await fetch('/pay', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(selectedSeats)
+            });
+
+            // // console.log(response.status);
+            // const data = await response.json();
+            // console.log(data);
+            // alert(data);
+            if (response.ok) {
+                // alert("Payment received successfully!");
+                swal({
+                    title: 'Payment received successfully!',
+                    icon: 'success',
+                    button: {
+                        className: 'btnCust btn2'},
+                    closeOnClickOutside: false,
+                    className: 'alertBox',
+                });
+            } else {
+                // If there was an error, log it to the console and display an error message to the user
+                console.error(`Payment error: ${response.status}`);
+                // alert("There was an error processing your payment. Please try again later.");
+                swal({
+                    title: 'Payment error',
+                    text: 'There was an error processing your payment. Please try again later.',
+                    icon: 'error',
+                    button: {
+                        className: 'btnCust btn2'},
+                    closeOnClickOutside: false,
+                    className: 'alertBox'
+                });
+            }
+
+        });
+
+
+    </script>
+</body>
+</html>
